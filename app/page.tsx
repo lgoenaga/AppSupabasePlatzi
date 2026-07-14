@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getTimeAgo } from "./utils/time";
-import { posts as initialPosts, type Post } from "./mocks/posts";
+//import { posts as initialPosts, type Post } from "./mocks/posts";
+
+import { createClient } from "./utils/supabase/client";
 
 function HeartIcon({ filled }: { filled: boolean }) {
   if (filled) {
@@ -36,7 +38,7 @@ function HeartIcon({ filled }: { filled: boolean }) {
   );
 }
 
-function PostCard({ post, onLike }: { post: Post; onLike: (id: number | string) => void }) {
+function PostCard({post, onLike, priority = false,}: {post: any; onLike: (id: number | string) => void; priority?: boolean;}) {
   return (
     <article className="bg-card-bg border border-border rounded-xl overflow-hidden shadow-sm">
       {/* Header con usuario y avatar */}
@@ -46,21 +48,24 @@ function PostCard({ post, onLike }: { post: Post; onLike: (id: number | string) 
             src={post.user.avatar}
             alt={post.user.username}
             fill
+            sizes="40px"
             className="object-cover"
           />
         </div>
         <div className="flex flex-col">
-          <span className="font-semibold text-foreground">{post.user.username}</span>
-          <span className="text-xs text-foreground/50">{getTimeAgo(post.created_at)}</span>
+          <span className="font-semibold font-sans text-foreground">{post.user.username}</span>
+          <span className="text-xs text-foreground/50 font-mono">{getTimeAgo(post.created_at)}</span>
         </div>
       </div>
 
       {/* Imagen del post */}
       <div className="relative w-full aspect-square">
         <Image
-          src={post.image_url}
+          src={post.img_url}
           alt={`Post de ${post.user.username}`}
           fill
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, 600px"
           className="object-cover"
         />
       </div>
@@ -83,8 +88,8 @@ function PostCard({ post, onLike }: { post: Post; onLike: (id: number | string) 
 
         {/* Caption */}
         <p className="mt-2 text-foreground">
-          <span className="font-semibold">{post.user.username}</span>{" "}
-          <span className="text-foreground/80">{post.caption}</span>
+          <span className="font-semibold font-mono">{post.user.username}</span>{" "}
+          <span className="text-foreground/80 font-sans">{post.label}</span>
         </p>
       </div>
     </article>
@@ -92,28 +97,63 @@ function PostCard({ post, onLike }: { post: Post; onLike: (id: number | string) 
 }
 
 export default function Home() {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [posts, setPosts] = useState<any[]>([]);
 
   const handleLike = (postId: number | string) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post.id === postId
           ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            }
+            ...post,
+            isLiked: !post.isLiked,
+            likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+          }
           : post
       )
     );
   };
+
+  const supabase = createClient();
+
+  if (!supabase) {
+    return <div>Supabase not initialized</div>;
+  }
+
+  useEffect(() => {
+
+    const fetchPosts = async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`
+                *,
+                user:profiles (
+                  username,
+                  avatar
+                )
+              `)
+        .not("img_url", "like", "%example.com%")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+
+      if (error) {
+        console.error("Error fetching posts:", error);
+        return;
+      }
+      setPosts(data);
+      console.log("Posts fetched:", data);
+    };
+
+    fetchPosts();
+
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card-bg border-b border-border">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold font-sans bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Suplatzigram
           </h1>
         </div>
@@ -122,8 +162,13 @@ export default function Home() {
       {/* Feed de posts */}
       <main className="max-w-lg mx-auto px-4 py-6">
         <div className="flex flex-col gap-6">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} onLike={handleLike} />
+          {posts.map((post, index) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              onLike={handleLike}
+              priority={index === 0}
+            />
           ))}
         </div>
       </main>

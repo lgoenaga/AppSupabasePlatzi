@@ -1,4 +1,6 @@
-export function getTimeAgo(date: Date): string {
+export function getTimeAgo(dateString: string | Date): string {
+
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
