@@ -2,16 +2,16 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { supabase } from "../utils/client";
+import { createClient } from "../utils/supabase/client";
 
 export default function CreatePage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [caption, setCaption] = useState("");
+  const [label, setLabel] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const supabase = createClient();
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -33,7 +33,7 @@ export default function CreatePage() {
   };
 
   const uploadAndCreatePost = async (file: File) => {
-    const userId = "11111111-1111-1111-1111-111111111111";
+    const userId = "15437848";
 
     // 1️⃣ Preparar nombre del archivo
     const fileExt = file.name.split(".").pop();
@@ -62,13 +62,13 @@ export default function CreatePage() {
 
     console.log("📸 Imagen subida:", publicUrl);
 
-    // 4️⃣ Crear el post en la tabla posts_new
+    // 4️⃣ Crear el post en la tabla posts
     const { data: postData, error: postError } = await supabase
-      .from("posts_new")
+      .from("posts")
       .insert({
         user_id: userId,
-        image_url: publicUrl,
-        caption: caption,
+        img_url: publicUrl,
+        label: label,
         likes: 0,
       })
       .select("*");
@@ -104,7 +104,7 @@ export default function CreatePage() {
       setMessage({ type: "success", text: "¡Post creado exitosamente!" });
       setImageFile(null);
       setImagePreview(null);
-      setCaption("");
+      setLabel("");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -140,6 +140,7 @@ export default function CreatePage() {
                   src={imagePreview}
                   alt="Preview"
                   fill
+                  priority
                   className="object-cover"
                 />
                 <button
@@ -206,12 +207,12 @@ export default function CreatePage() {
             />
           </div>
 
-          {/* Caption */}
+          {/* Label */}
           <div className="flex flex-col gap-2">
             <textarea
-              id="caption"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
+              id="label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
               placeholder="Escribe algo sobre tu foto..."
               rows={3}
               className="w-full px-4 py-3 rounded-xl bg-card-bg border border-border text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
