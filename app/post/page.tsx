@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { createClient } from "../utils/supabase/client";
+import { createClient } from "../lib/client";
 
 export default function CreatePage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
